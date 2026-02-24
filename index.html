@@ -1,0 +1,1629 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Interaktyvi, animuota mini-svetainė, pristatanti avataro kūrimo procesą: nuo idėjos iki eksportuoto modelio." />
+  <title>Avataro kūrimo procesas — interaktyvus pristatymas</title>
+
+  <!-- Open Graph (jei dalinsiesi nuoroda) -->
+  <meta property="og:title" content="Avataro kūrimo procesas" />
+  <meta property="og:description" content="Timeline + demo + galerija (lightbox) + before/after slankiklis + deep links." />
+  <meta property="og:type" content="website" />
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.09);
+      --text:#eaf0ff;
+      --muted: rgba(234,240,255,.72);
+      --line: rgba(234,240,255,.14);
+      --accent:#7c5cff;
+      --accent2:#23d5ab;
+      --danger:#ff4d6d;
+      --shadow: 0 20px 60px rgba(0,0,0,.35);
+      --radius: 18px;
+      --max: 1100px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family:var(--font);
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 15% 10%, rgba(124,92,255,.25), transparent 60%),
+        radial-gradient(900px 700px at 85% 25%, rgba(35,213,171,.18), transparent 55%),
+        radial-gradient(800px 700px at 60% 95%, rgba(255,77,109,.12), transparent 60%),
+        linear-gradient(180deg, #070a14 0%, #0b1020 35%, #070a14 100%);
+      overflow-x:hidden;
+    }
+
+    /* Top progress bar */
+    .topbar{
+      position:fixed; inset:0 0 auto 0;
+      height: 4px;
+      z-index: 70;
+      background: rgba(255,255,255,.06);
+      backdrop-filter: blur(10px);
+    }
+    .topbar > .fill{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 22px rgba(124,92,255,.55);
+      transition: width .08s linear;
+    }
+
+    /* Subtle animated background grid */
+    .bg-grid{
+      position:fixed; inset:-20% -20%;
+      pointer-events:none;
+      opacity:.12;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 48px 48px;
+      transform: rotate(-8deg);
+      animation: drift 16s ease-in-out infinite alternate;
+      z-index:0;
+    }
+    @keyframes drift{
+      from{ transform: translate3d(-10px,-10px,0) rotate(-8deg); }
+      to  { transform: translate3d(18px,12px,0) rotate(-8deg); }
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index: 60;
+      backdrop-filter: blur(14px);
+      background: linear-gradient(180deg, rgba(7,10,20,.75), rgba(7,10,20,.35));
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+
+    .nav{
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 14px 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+    }
+
+    .brand{
+      display:flex; align-items:center; gap: 10px;
+      min-width: 260px;
+    }
+    .logo{
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.25), transparent 55%),
+                  linear-gradient(135deg, rgba(124,92,255,.95), rgba(35,213,171,.85));
+      box-shadow: 0 18px 40px rgba(0,0,0,.35);
+      position:relative;
+      overflow:hidden;
+    }
+    .logo:after{
+      content:"";
+      position:absolute; inset:-30% -30%;
+      background: conic-gradient(from 180deg, rgba(255,255,255,.0), rgba(255,255,255,.35), rgba(255,255,255,0));
+      animation: spin 3.6s linear infinite;
+      opacity:.65;
+    }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+
+    .brand h1{
+      font-size: 15px;
+      margin: 0;
+      letter-spacing: .3px;
+      font-weight: 700;
+    }
+    .brand p{
+      margin:2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .controls{
+      display:flex; align-items:center; gap: 10px;
+      flex-wrap: wrap;
+      justify-content:flex-end;
+    }
+
+    .btn{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
+      display:inline-flex; align-items:center; gap: 8px;
+      user-select:none;
+    }
+    .btn:hover{ background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.22); transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0px) scale(.99); }
+    .btn.primary{
+      border-color: rgba(124,92,255,.55);
+      background: linear-gradient(135deg, rgba(124,92,255,.35), rgba(35,213,171,.18));
+    }
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none;
+    }
+    .pill{
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+    .chip{
+      font-size: 11px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.80);
+      display:inline-flex;
+      align-items:center;
+      gap: 6px;
+    }
+    .chip .mini-dot{
+      width:7px; height:7px; border-radius:999px;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 14px rgba(124,92,255,.35);
+    }
+
+    main{
+      position:relative;
+      z-index:1;
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 26px 18px 80px;
+    }
+
+    .hero{
+      display:grid;
+      grid-template-columns: 1.25fr .85fr;
+      gap: 18px;
+      align-items: stretch;
+      margin-top: 10px;
+    }
+    @media (max-width: 980px){
+      .hero{ grid-template-columns: 1fr; }
+      .brand{ min-width: unset; }
+    }
+
+    .card{
+      border: 1px solid rgba(255,255,255,.12);
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .inner{ padding: 18px; }
+
+    .headline{
+      font-size: 42px;
+      line-height: 1.05;
+      margin: 0 0 10px;
+      letter-spacing: -0.5px;
+    }
+    .sub{
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .mini-grid{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    @media (max-width: 720px){
+      .mini-grid{ grid-template-columns: 1fr; }
+      .headline{ font-size: 34px; }
+    }
+    .mini{
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .mini strong{ display:block; font-size: 13px; margin-bottom: 4px; }
+    .mini span{ font-size: 12px; color: var(--muted); line-height:1.35; }
+
+    /* Avatar preview */
+    .preview{
+      position:relative;
+      min-height: 320px;
+      background:
+        radial-gradient(260px 220px at 55% 35%, rgba(124,92,255,.25), transparent 60%),
+        radial-gradient(220px 200px at 40% 70%, rgba(35,213,171,.20), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    }
+
+    .avatar-stage{
+      position:absolute; inset: 12px;
+      border-radius: calc(var(--radius) - 6px);
+      border: 1px dashed rgba(255,255,255,.16);
+      overflow:hidden;
+    }
+    .avatar{
+      position:absolute;
+      left: 50%;
+      top: 55%;
+      transform: translate(-50%,-50%);
+      width: 190px;
+      height: 190px;
+      filter: drop-shadow(0 24px 40px rgba(0,0,0,.4));
+      transition: transform .25s ease;
+      animation: idleSway 3.6s ease-in-out infinite;
+      transform-origin: 50% 60%;
+    }
+    @keyframes idleSway{
+      0%{ transform: translate(-50%,-50%) rotate(-1deg); }
+      50%{ transform: translate(-50%,-50%) rotate(1deg); }
+      100%{ transform: translate(-50%,-50%) rotate(-1deg); }
+    }
+    .avatar.pop{ transform: translate(-50%,-50%) scale(1.04); animation: none; }
+
+    /* Simple SVG styling via CSS variables */
+    .avatar svg{ width:100%; height:100%; }
+    .avatar .hair{ fill: var(--hair, #2b2f3a); }
+    .avatar .skin{ fill: var(--skin, #f0c7a8); }
+    .avatar .shirt{ fill: var(--shirt, #7c5cff); }
+    .avatar .bg{ fill: rgba(255,255,255,.06); }
+    .avatar .outline{ stroke: rgba(255,255,255,.18); stroke-width: 4; fill: none; }
+    .avatar .eye{ fill: rgba(10,12,22,.85); }
+    .avatar .shine{ fill: rgba(255,255,255,.25); }
+    .avatar .lid{ fill: var(--skin, #f0c7a8); transform-origin: center; transform: translateY(var(--blink, -10px)); opacity: var(--blinkOpacity, 0); }
+    .avatar .mouth{ stroke: rgba(10,12,22,.55); }
+
+    .sliders{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .row{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+    }
+    .row label{
+      font-size: 12px;
+      color: var(--muted);
+      min-width: 92px;
+    }
+    .row input[type="range"]{
+      flex:1;
+      accent-color: var(--accent);
+    }
+    .row output{
+      min-width: 52px;
+      text-align:right;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255,255,255,.86);
+      font-size: 12px;
+    }
+
+    /* Sections */
+    section{
+      margin-top: 18px;
+      scroll-margin-top: 90px;
+    }
+    .section-title{
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    }
+    .section-title h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing:.2px;
+    }
+    .section-title small{ color: var(--muted); }
+
+    /* Timeline (su vertikalia linija mobile ir desktop) */
+    .timeline{
+      padding: 18px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      position:relative;
+    }
+    .timeline:before{
+      content:"";
+      position:absolute;
+      left: 34px;
+      top: 18px;
+      bottom: 18px;
+      width: 2px;
+      background: rgba(255,255,255,.10);
+      border-radius: 99px;
+      display:none;
+    }
+    @media (max-width: 900px){
+      .timeline{ grid-template-columns: 1fr; padding-left: 52px; }
+      .timeline:before{ display:block; }
+    }
+
+    .step{
+      position:relative;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      overflow:hidden;
+      cursor:pointer;
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+      outline: none;
+    }
+    .step:hover{ transform: translateY(-2px); background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.20); }
+    .step:focus-visible{ box-shadow: 0 0 0 3px rgba(124,92,255,.35); }
+    .step.active{
+      border-color: rgba(124,92,255,.55);
+      background: linear-gradient(135deg, rgba(124,92,255,.18), rgba(35,213,171,.10));
+    }
+
+    /* Timeline dot for mobile line */
+    .step:before{
+      content:"";
+      position:absolute;
+      left: -36px;
+      top: 20px;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.18);
+      border: 2px solid rgba(255,255,255,.18);
+      display:none;
+    }
+    .step.active:before{
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      border-color: rgba(255,255,255,.20);
+      box-shadow: 0 0 16px rgba(124,92,255,.35);
+    }
+    @media (max-width: 900px){
+      .step:before{ display:block; }
+    }
+
+    .step .top{
+      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+      margin-bottom: 8px;
+    }
+    .badge{
+      display:inline-flex; align-items:center; gap: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,.88);
+    }
+    .dot{
+      width: 10px; height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 16px rgba(124,92,255,.45);
+    }
+    .step h3{ margin: 4px 0 6px; font-size: 14px; }
+    .step p{ margin: 0; color: var(--muted); font-size: 13px; line-height:1.45; }
+    .meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .io{
+      display:flex;
+      gap: 10px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .io b{ color: rgba(255,255,255,.90); }
+
+    .panel{
+      padding: 18px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 12px;
+      align-items:start;
+    }
+    @media (max-width: 900px){ .panel{ grid-template-columns: 1fr; } }
+    .panel .big{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      padding: 14px;
+      min-height: 170px;
+    }
+    .panel .big h4{ margin: 0 0 8px; font-size: 14px; }
+    .panel .big ul{ margin:0; padding-left: 16px; color: var(--muted); font-size: 13px; line-height:1.55; }
+    .callouts{
+      margin-top: 12px;
+      display:grid;
+      gap: 10px;
+    }
+    .callout{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      padding: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .callout b{ color: rgba(255,255,255,.90); }
+
+    .panel .side{
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      padding: 14px;
+    }
+    .side .kpi{
+      display:grid; gap: 10px;
+    }
+    .kpi .item{
+      display:flex; align-items:center; justify-content:space-between;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+    }
+    .kpi .item strong{ color: rgba(255,255,255,.90); font-weight: 700; }
+
+    /* Gallery */
+    .gallery{
+      margin-top: 12px;
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 900px){ .gallery{ grid-template-columns: repeat(2, 1fr);} }
+    @media (max-width: 520px){ .gallery{ grid-template-columns: 1fr; } }
+
+    .thumb{
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      overflow:hidden;
+      cursor:pointer;
+      position:relative;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      min-height: 96px;
+    }
+    .thumb:hover{ transform: translateY(-2px); border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.05); }
+    .thumb img{
+      width:100%; height: 110px;
+      object-fit: cover;
+      display:block;
+      filter: saturate(1.05);
+    }
+    .thumb .cap{
+      padding: 10px 10px 11px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height:1.35;
+    }
+    .thumb .zoom{
+      position:absolute;
+      top: 10px; right: 10px;
+      width: 28px; height: 28px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(7,10,20,.55);
+      backdrop-filter: blur(8px);
+      display:flex; align-items:center; justify-content:center;
+      color: rgba(255,255,255,.85);
+      font-size: 14px;
+    }
+
+    /* Before/After Compare */
+    .compare-wrap{
+      margin-top: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      padding: 12px;
+    }
+    .compare{
+      position:relative;
+      width:100%;
+      height: 240px;
+      border-radius: 14px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.02);
+    }
+    .compare img{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit: cover;
+      user-select:none;
+      -webkit-user-drag: none;
+      pointer-events:none;
+    }
+    .compare .after{
+      clip-path: inset(0 0 0 50%);
+    }
+    .compare .handle{
+      position:absolute;
+      top:0; bottom:0;
+      left: 50%;
+      width: 2px;
+      background: rgba(255,255,255,.70);
+      box-shadow: 0 0 0 2px rgba(0,0,0,.08);
+    }
+    .compare .knob{
+      position:absolute;
+      left: calc(50% - 18px);
+      top: calc(50% - 18px);
+      width: 36px; height: 36px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(7,10,20,.55);
+      backdrop-filter: blur(10px);
+      display:flex; align-items:center; justify-content:center;
+      color: rgba(255,255,255,.90);
+      font-size: 16px;
+    }
+    .compare-controls{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .compare-controls input[type="range"]{
+      flex: 1;
+      accent-color: var(--accent);
+    }
+
+    /* Lightbox */
+    .lightbox{
+      position:fixed;
+      inset:0;
+      z-index: 90;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(8px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .lightbox.open{ display:flex; }
+    .lb-panel{
+      width:min(980px, 100%);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(7,10,20,.75);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .lb-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    .lb-title{
+      color: rgba(255,255,255,.90);
+      font-size: 13px;
+      margin:0;
+    }
+    .lb-actions{ display:flex; gap: 8px; align-items:center; }
+    .lb-btn{
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.90);
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor:pointer;
+      transition: background .12s ease, transform .12s ease, border-color .12s ease;
+    }
+    .lb-btn:hover{ background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.22); transform: translateY(-1px); }
+    .lb-body{
+      padding: 12px;
+    }
+    .lb-body img{
+      width:100%;
+      height: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      display:block;
+    }
+    .lb-cap{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(7,10,20,.70);
+      backdrop-filter: blur(12px);
+      color: rgba(255,255,255,.86);
+      font-size: 12px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .25s ease, transform .25s ease;
+      z-index: 95;
+    }
+    .toast.show{
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    /* Reveal-on-scroll
+       Pastaba: kad svetainė nebūtų tuščia net jei JS neveikia
+       (arba naršyklė nepalaiko IntersectionObserver / naujo JS),
+       pagal nutylėjimą viską rodome. Animaciją taikome tik jei
+       naršyklė ją palaiko ir prideda .visible klasę. */
+    .reveal{
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal.visible{
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    footer{
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align:center;
+      padding: 18px 0 0;
+    }
+
+    /* Accessibility / motion */
+    @media (prefers-reduced-motion: reduce){
+      *{ animation: none !important; transition: none !important; scroll-behavior:auto !important; }
+    }
+
+    /* Mobile performance tweak: lighten heavy shadows a bit */
+    @media (max-width: 520px){
+      .card{ box-shadow: 0 14px 40px rgba(0,0,0,.30); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="topbar" aria-hidden="true"><div class="fill" id="progressFill"></div></div>
+
+  <header>
+    <div class="nav">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Avatarų kūrimo procesas</h1>
+          <p>Timeline + galerija (lightbox) + before/after + deep links</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <span class="pill" id="stepPill">Žingsnis: 1 / 6</span>
+        <button class="btn" id="btnPrev" title="Ankstesnis žingsnis">← Ankstesnis</button>
+        <button class="btn primary" id="btnNext" title="Kitas žingsnis">Kitas →</button>
+        <button class="btn" id="btnDemo" title="Greita demonstracija">▶ Demo</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="card reveal">
+        <div class="inner">
+          <h2 class="headline">Nuo idėjos iki eksportuoto avataro.</h2>
+          <p class="sub">
+            Spaudyk žingsnius, naudok ↑/↓, arba dalinkis konkrečia proceso vieta per nuorodą, pvz. <span class="pill">#step-3</span>.
+            Žemiau rasi galeriją su <b>lightbox</b> ir vieną <b>before/after</b> palyginimą.
+          </p>
+
+          <div class="mini-grid">
+            <div class="mini">
+              <strong>Deep links</strong>
+              <span>Atidaro konkretų žingsnį pagal URL hash (pvz. #step-5).</span>
+            </div>
+            <div class="mini">
+              <strong>Galerija</strong>
+              <span>Kiekvienas žingsnis turi mini screenshot’ų galeriją su peržiūra.</span>
+            </div>
+            <div class="mini">
+              <strong>Before/After</strong>
+              <span>Viename žingsnyje – slankiklis palyginimui (pvz. bazė vs detalės).</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card preview reveal">
+        <div class="inner" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div>
+            <div style="font-weight:700; font-size:14px;">Mini avataro peržiūra</div>
+            <div style="color:var(--muted); font-size:12px; margin-top:4px;">Slinkikliai imituoja „customization“.</div>
+          </div>
+          <span class="pill" id="moodPill">Nuotaika: rami</span>
+        </div>
+
+        <div class="avatar-stage">
+          <div class="avatar" id="avatar">
+            <!-- Simple SVG avatar -->
+            <svg viewBox="0 0 200 200" role="img" aria-label="Avataro iliustracija">
+              <circle class="bg" cx="100" cy="100" r="92"/>
+              <circle class="outline" cx="100" cy="100" r="92"/>
+
+              <!-- Shirt -->
+              <path class="shirt" d="M45 170c10-30 30-45 55-45s45 15 55 45c-18 14-40 22-55 22s-37-8-55-22z"/>
+              <!-- Neck -->
+              <rect class="skin" x="86" y="112" width="28" height="30" rx="12"/>
+              <!-- Face -->
+              <circle class="skin" cx="100" cy="92" r="48"/>
+
+              <!-- Hair -->
+              <path class="hair" d="M56 92c0-28 20-52 44-52s44 18 44 48c0 0-8-10-18-12-10-2-14 3-26 3-12 0-16-6-26-4-10 2-18 17-18 17z"/>
+              <path class="hair" d="M64 80c3 14-2 28-6 34-3-6-6-16-6-26 0-18 7-30 12-34z"/>
+
+              <!-- Eyes -->
+              <ellipse class="eye" cx="82" cy="92" rx="6.5" ry="7"/>
+              <ellipse class="eye" cx="118" cy="92" rx="6.5" ry="7"/>
+              <circle class="shine" cx="80" cy="90" r="2"/>
+              <circle class="shine" cx="116" cy="90" r="2"/>
+
+              <!-- Eyelids (blink) -->
+              <rect class="lid" x="73" y="83" width="18" height="18" rx="8"/>
+              <rect class="lid" x="109" y="83" width="18" height="18" rx="8"/>
+
+              <!-- Mouth (stroke shape changed via JS) -->
+              <path class="mouth" id="mouthPath" d="M84 115c7 7 25 7 32 0" fill="none" stroke-width="5" stroke-linecap="round"/>
+
+              <!-- Cheeks -->
+              <circle cx="68" cy="108" r="6" fill="rgba(255,77,109,.18)"/>
+              <circle cx="132" cy="108" r="6" fill="rgba(255,77,109,.18)"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="inner">
+          <div class="sliders" aria-label="Avataro nustatymai">
+            <div class="row">
+              <label for="hair">Plaukai</label>
+              <input id="hair" type="range" min="0" max="100" value="35" />
+              <output id="hairOut">35</output>
+            </div>
+            <div class="row">
+              <label for="skin">Oda</label>
+              <input id="skin" type="range" min="0" max="100" value="45" />
+              <output id="skinOut">45</output>
+            </div>
+            <div class="row">
+              <label for="shirt">Apranga</label>
+              <input id="shirt" type="range" min="0" max="100" value="55" />
+              <output id="shirtOut">55</output>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="card reveal" id="process">
+      <div class="section-title">
+        <h2>Procesas (spausk ant žingsnio)</h2>
+        <small id="hint">Patarimas: ↑/↓ perjungia, Esc uždaro peržiūrą</small>
+      </div>
+
+      <div class="timeline" id="timeline" aria-label="Procesas: žingsnių sąrašas"></div>
+
+      <div class="panel">
+        <div class="big">
+          <h4 id="detailTitle" tabindex="-1">1. Tikslas ir nuorodos</h4>
+
+          <div class="io" id="ioLine">
+            <div><b>Input:</b> <span id="ioInput"></span></div>
+            <div><b>Veiksmai:</b> <span id="ioActions"></span></div>
+            <div><b>Output:</b> <span id="ioOutput"></span></div>
+          </div>
+
+          <ul id="detailList"></ul>
+
+          <div class="callouts">
+            <div class="callout" id="calloutFix"><b>Klaida → Sprendimas:</b> <span id="fixText"></span></div>
+            <div class="callout" id="calloutTip"><b>Mini patarimas:</b> <span id="tipText"></span></div>
+          </div>
+
+          <!-- Gallery injected here -->
+          <div class="gallery" id="gallery"></div>
+
+          <!-- Compare injected here (only for one step) -->
+          <div class="compare-wrap" id="compareWrap" style="display:none;"></div>
+        </div>
+
+        <div class="side">
+          <div class="kpi">
+            <div class="item"><span>Progresas</span><strong id="kpiProgress">16%</strong></div>
+            <div class="item"><span>Akcentas</span><strong id="kpiFocus">Nuorodos</strong></div>
+            <div class="item"><span>Rezultatas</span><strong id="kpiOutputRight">Moodboard</strong></div>
+          </div>
+
+          <div style="margin-top:12px; color:var(--muted); font-size:12px; line-height:1.5;">
+            <b>Pastaba:</b> paveikslėliai čia su „placeholderiais“. Pakeisk į savo screenshot’us:
+            <span class="pill">steps[i].gallery</span> ir <span class="pill">steps[i].compare</span>.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card reveal" id="export">
+      <div class="section-title">
+        <h2>Išvada / CTA</h2>
+        <small>Trumpa santrauka + dalinimasis</small>
+      </div>
+      <div class="inner">
+        <p class="sub" style="margin:0;">
+          Pabaigoje parodyk: <b>ką išmokai</b>, <b>kokį formatą</b> eksportavai (pvz., GLB/FBX),
+          ir <b>kur panaudojai</b> (Unity, Three.js, VR/AR, prezentacija).
+        </p>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn primary" id="btnScrollTop">↑ Grįžti į viršų</button>
+          <button class="btn" id="btnCopyOutline">⧉ Kopijuoti santrauką</button>
+          <button class="btn" id="btnCopyLink">🔗 Kopijuoti šio žingsnio nuorodą</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Vieno failo šablonas — įdėk savo realius žingsnius, tool’us, screenshot’us ir prieš/po palyginimą.
+    </footer>
+  </main>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" aria-modal="true" role="dialog" aria-label="Paveikslėlio peržiūra">
+    <div class="lb-panel">
+      <div class="lb-top">
+        <p class="lb-title" id="lbTitle">Peržiūra</p>
+        <div class="lb-actions">
+          <button class="lb-btn" id="lbPrev" title="Ankstesnis">←</button>
+          <button class="lb-btn" id="lbNext" title="Kitas">→</button>
+          <button class="lb-btn" id="lbClose" title="Uždaryti">Esc ✕</button>
+        </div>
+      </div>
+      <div class="lb-body">
+        <img id="lbImg" alt="Peržiūra" />
+        <div class="lb-cap" id="lbCap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // ============================================================
+    // 1) DUOMENYS: PRITAIKYK SAVO REALIAM PROCESUI
+    // ============================================================
+    // Tip: pakeisk gallery/compare URL į savo paveikslėlius (pvz. ./img/step1-1.png)
+    const steps = [
+      {
+        title: "Tikslas ir nuorodos",
+        focus: "Nuorodos",
+        output: "Moodboard",
+        io: { input: "Įkvėpimai, stilius, apranga", actions: "Moodboard + kriterijai", output: "Aiškus stiliaus brief" },
+        tools: ["Figma", "Pinterest", "PureRef"],
+        bullets: [
+          "Apsisprendžiau dėl stiliaus: realistiškas / stilizuotas / low-poly.",
+          "Surinkau nuorodas (veidas, drabužiai, spalvos, proporcijos).",
+          "Susidariau kriterijus: kur bus naudojama (VR, žaidimas, web) ir kokie formatai tinka."
+        ],
+        fix: "Per daug skirtingų stilių → pasirinkau 1 kryptį ir 2–3 „must-have“ atributus.",
+        tip: "Jei pristatymas trumpas, parodyk 6–9 referencijas viename koliaže.",
+        mood: "rami",
+        mouth: "neutral",
+        avatar: { hair: 20, skin: 45, shirt: 60 },
+        gallery: [
+          { src: "https://images.unsplash.com/photo-1526481280695-3c687fd5432c?auto=format&fit=crop&w=1200&q=70", caption: "Moodboard / nuorodos (pavyzdys)" },
+          { src: "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1200&q=70", caption: "Spalvų paletė (pavyzdys)" },
+          { src: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=70", caption: "Kriterijai + stiliaus gairės (pavyzdys)" }
+        ]
+      },
+      {
+        title: "Bazinis modelis (base mesh)",
+        focus: "Forma",
+        output: "Silhouette",
+        io: { input: "Proporcijos + referencijos", actions: "Modeliavimas / blokavimas", output: "Bazinis siluetas" },
+        tools: ["Blender", "ZBrush (optional)"],
+        bullets: [
+          "Sukūriau bazinę galvos/figūros formą (proporcijos, siluetas).",
+          "Išlaikiau paprastumą: pirmiausia didžiosios formos, po to detalės.",
+          "Patikrinau iš kelių kampų (front/side/3D)."
+        ],
+        fix: "Netinkamas mastelis → užsidėjau realaus ūgio matavimo gaires ir kamerų preset’us.",
+        tip: "Siluetas 80% kokybės: užsidėk vieną stiprų šoninį apšvietimą ir žiūrėk kontūrą.",
+        mood: "susikaupusi",
+        mouth: "neutral",
+        avatar: { hair: 35, skin: 50, shirt: 55 },
+        gallery: [
+          { src: "https://images.unsplash.com/photo-1557660559-42497f78035b?auto=format&fit=crop&w=1200&q=70", caption: "Blokavimo etapas (pavyzdys)" },
+          { src: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?auto=format&fit=crop&w=1200&q=70", caption: "Kampų peržiūra (pavyzdys)" }
+        ]
+      },
+      {
+        title: "Detalės ir topologija",
+        focus: "Detalės",
+        output: "Clean mesh",
+        io: { input: "Bazinis mesh", actions: "Edge loops + švarinimas", output: "Animacijai tinkama topologija" },
+        tools: ["Blender", "Maya (optional)"],
+        bullets: [
+          "Sutvarkiau kraštines/loops, kad tiktų animacijai (akių, burnos sritys).",
+          "Pridėjau smulkesnes detales (ausys, antakiai, aksesuarai).",
+          "Patikrinau, kad geometrija būtų optimali (be nereikalingų poligonų)."
+        ],
+        fix: "Artefaktai deformacijose → sutankinau loop’us kritinėse vietose (akys/burna).",
+        tip: "Jei orientuota į real-time, laikyk polycount stabilų ir daryk LOD planą.",
+        mood: "kūrybiška",
+        mouth: "smile",
+        avatar: { hair: 55, skin: 40, shirt: 45 },
+        gallery: [
+          { src: "https://images.unsplash.com/photo-1580927752452-89d86da3fa0a?auto=format&fit=crop&w=1200&q=70", caption: "Topologijos peržiūra (pavyzdys)" },
+          { src: "https://images.unsplash.com/photo-1523437113738-bbd3cc89fb19?auto=format&fit=crop&w=1200&q=70", caption: "Detalės / aksesuarai (pavyzdys)" }
+        ],
+        // Before/After compare (šitas bus rodomas tik šitam žingsnyje)
+        compare: {
+          labelBefore: "Prieš (bazė)",
+          labelAfter: "Po (detalės)",
+          beforeSrc: "https://images.unsplash.com/photo-1526481280695-3c687fd5432c?auto=format&fit=crop&w=1400&q=70",
+          afterSrc: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?auto=format&fit=crop&w=1400&q=70",
+          caption: "Before/After palyginimas (pavyzdys) — pakeisk savo realiais „base“ ir „clean topology“ screenshot’ais."
+        }
+      },
+      {
+        title: "Medžiagos, spalvos, tekstūros",
+        focus: "Spalvos",
+        output: "Texture set",
+        io: { input: "Mesh + UV", actions: "Paletė + tekstūravimas", output: "Albedo/Rough/Normal" },
+        tools: ["Substance Painter", "Photoshop (optional)"],
+        bullets: [
+          "Parinkau spalvų paletę (oda, plaukai, apranga).",
+          "Sukūriau/uždėjau tekstūras (albedo, roughness, normal).",
+          "Padariau testą skirtingame apšvietime."
+        ],
+        fix: "Per ryškios tekstūros → suvienodinau roughness ir sumažinau kontrastą.",
+        tip: "Padaryk 2 apšvietimo testus: neutralus HDRI + stiprus rim light.",
+        mood: "energinga",
+        mouth: "smile",
+        avatar: { hair: 75, skin: 55, shirt: 25 },
+        gallery: [
+          { src: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=70", caption: "Tekstūrų set’as (pavyzdys)" },
+          { src: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=70", caption: "Shader testai (pavyzdys)" }
+        ]
+      },
+      {
+        title: "Rig’inimas ir animacija",
+        focus: "Judėjimas",
+        output: "Rig + clips",
+        io: { input: "Mesh + kaulų planas", actions: "Rig + weight paint + testai", output: "Veikiantis rig" },
+        tools: ["Blender", "Unity", "Mixamo (optional)"],
+        bullets: [
+          "Sukūriau skeletą (bone hierarchy) ir pririšau mesh (skin/weights).",
+          "Patikrinau deformacijas: pečiai, kaklas, veidas.",
+          "Eksportavau animacinius klipus (idle, wave, walk) arba paruošiau blendshapes."
+        ],
+        fix: "Pečių deformacijos → pataisiau weight paint ir pridėjau helper bone.",
+        tip: "Pristatymui parodyk 3 trumpus klipus (idle/wave/walk) vietoj ilgo video.",
+        mood: "linksma",
+        mouth: "bigsmile",
+        avatar: { hair: 40, skin: 48, shirt: 80 },
+        gallery: [
+          { src: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=70", caption: "Rig struktūra (pavyzdys)" },
+          { src: "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?auto=format&fit=crop&w=1200&q=70", caption: "Animacijos testas (pavyzdys)" }
+        ]
+      },
+      {
+        title: "Eksportas ir integracija",
+        focus: "Pritaikymas",
+        output: "GLB/FBX",
+        io: { input: "Rig + tekstūros", actions: "Eksportas + validacija", output: "Modelis tikslinėje aplinkoje" },
+        tools: ["Unity", "Three.js", "glTF tools"],
+        bullets: [
+          "Eksportavau į tikslinį formatą (GLB/FBX) ir patikrinau mastelį.",
+          "Testavau tikslinėje aplinkoje (Unity/Three.js ir pan.).",
+          "Sutvarkiau paskutines klaidas: medžiagos, kaulai, tekstūrų keliai."
+        ],
+        fix: "Tekstūrų keliai lūžta → įpakavau į vieną aplanką ir patikrinau relative paths.",
+        tip: "Įdėk paskutinį kadrą: avataras jau scenoj / web peržiūroj (įrodo „done“).",
+        mood: "pasididžiavusi",
+        mouth: "smile",
+        avatar: { hair: 30, skin: 52, shirt: 50 },
+        gallery: [
+          { src: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=70", caption: "Eksportas / failų struktūra (pavyzdys)" },
+          { src: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=70", caption: "Integracija tikslinėje aplinkoje (pavyzdys)" }
+        ]
+      }
+    ];
+
+    // ============================================================
+    // 2) HELPERS
+    // ============================================================
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
+    const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
+
+    const timelineEl = $("#timeline");
+    const detailTitle = $("#detailTitle");
+    const detailList = $("#detailList");
+
+    const ioInput = $("#ioInput");
+    const ioActions = $("#ioActions");
+    const ioOutput = $("#ioOutput");
+
+    const fixText = $("#fixText");
+    const tipText = $("#tipText");
+
+    const galleryEl = $("#gallery");
+    const compareWrap = $("#compareWrap");
+
+    const kpiProgress = $("#kpiProgress");
+    const kpiFocus = $("#kpiFocus");
+    const kpiOutputRight = $("#kpiOutputRight");
+
+    const stepPill = $("#stepPill");
+    const moodPill = $("#moodPill");
+    const avatarEl = $("#avatar");
+    const mouthPath = $("#mouthPath");
+    const progressFill = $("#progressFill");
+
+    const btnPrev = $("#btnPrev");
+    const btnNext = $("#btnNext");
+    const btnDemo = $("#btnDemo");
+
+    const toast = $("#toast");
+
+    const sliders = {
+      hair: $("#hair"), skin: $("#skin"), shirt: $("#shirt"),
+      hairOut: $("#hairOut"), skinOut: $("#skinOut"), shirtOut: $("#shirtOut")
+    };
+
+    // Lightbox
+    const lightbox = $("#lightbox");
+    const lbImg = $("#lbImg");
+    const lbTitle = $("#lbTitle");
+    const lbCap = $("#lbCap");
+    const lbPrev = $("#lbPrev");
+    const lbNext = $("#lbNext");
+    const lbClose = $("#lbClose");
+
+    let active = 0;
+    let demoOn = false;
+    let demoTimer = null;
+
+    // Lightbox state
+    let lbStepIndex = 0;
+    let lbImgIndex = 0;
+    let lastFocusedEl = null;
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=>toast.classList.remove("show"), 1500);
+    }
+
+    // map 0..100 -> colors
+    function lerp(a,b,t){ return a + (b-a)*t; }
+    function hex(n){ return n.toString(16).padStart(2,"0"); }
+    function rgbToHex(r,g,b){ return `#${hex(r)}${hex(g)}${hex(b)}`; }
+
+    function hairColor(v){
+      const t = v/100;
+      const r = Math.round(lerp(35, 160, t));
+      const g = Math.round(lerp(40, 100, t));
+      const b = Math.round(lerp(55, 220, t));
+      return rgbToHex(r,g,b);
+    }
+    function skinColor(v){
+      const t = v/100;
+      const r = Math.round(lerp(224, 245, t));
+      const g = Math.round(lerp(184, 205, t));
+      const b = Math.round(lerp(156, 170, t));
+      return rgbToHex(r,g,b);
+    }
+    function shirtColor(v){
+      const t = v/100;
+      const r = Math.round(lerp(124,  35, t));
+      const g = Math.round(lerp( 92, 213, t));
+      const b = Math.round(lerp(255, 171, t));
+      return rgbToHex(r,g,b);
+    }
+
+    function setMouth(kind){
+      // paprastos 3 burnos būsenos
+      if(kind === "bigsmile"){
+        mouthPath.setAttribute("d","M80 114c9 12 31 12 40 0");
+      }else if(kind === "smile"){
+        mouthPath.setAttribute("d","M84 115c7 7 25 7 32 0");
+      }else{
+        mouthPath.setAttribute("d","M84 115c10 0 22 0 32 0"); // neutral line
+      }
+    }
+
+    function applyAvatar({hair, skin, shirt}, mouthKind){
+      const hv = clamp(hair,0,100);
+      const sv = clamp(skin,0,100);
+      const tv = clamp(shirt,0,100);
+
+      avatarEl.style.setProperty("--hair", hairColor(hv));
+      avatarEl.style.setProperty("--skin", skinColor(sv));
+      avatarEl.style.setProperty("--shirt", shirtColor(tv));
+
+      setMouth(mouthKind || "neutral");
+
+      // pop
+      avatarEl.classList.remove("pop");
+      void avatarEl.offsetWidth;
+      avatarEl.classList.add("pop");
+
+      sliders.hair.value = hv; sliders.skin.value = sv; sliders.shirt.value = tv;
+      sliders.hairOut.value = hv; sliders.skinOut.value = sv; sliders.shirtOut.value = tv;
+    }
+
+    function setBlink(on){
+      if(on){
+        avatarEl.style.setProperty("--blink", "0px");
+        avatarEl.style.setProperty("--blinkOpacity", "1");
+      }else{
+        avatarEl.style.setProperty("--blink", "-10px");
+        avatarEl.style.setProperty("--blinkOpacity", "0");
+      }
+    }
+
+    // Simple random blink
+    function blinkLoop(){
+      const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if(reduce) return;
+      const t = 2400 + Math.random()*2200;
+      setTimeout(()=>{
+        setBlink(true);
+        setTimeout(()=>setBlink(false), 120);
+        blinkLoop();
+      }, t);
+    }
+
+    // ============================================================
+    // 3) TIMELINE RENDER + ACTIVE STEP
+    // ============================================================
+    function renderTimeline(){
+      timelineEl.innerHTML = "";
+      steps.forEach((s, i) => {
+        const el = document.createElement("div");
+        el.className = "step" + (i === active ? " active" : "");
+        el.tabIndex = 0;
+        el.setAttribute("role","button");
+        el.setAttribute("data-step", String(i+1));
+        el.setAttribute("aria-label", `${i+1}. ${s.title}`);
+        if(i === active) el.setAttribute("aria-current","step");
+
+        const toolsHTML = (s.tools || []).slice(0,5).map(t => \`
+          <span class="chip"><span class="mini-dot"></span>\${escapeHtml(t)}</span>
+        \`).join("");
+
+        el.innerHTML = \`
+          <div class="top">
+            <span class="badge"><span class="dot"></span> \${i+1}. Žingsnis</span>
+            <span class="pill">\${escapeHtml(s.output)}</span>
+          </div>
+          <h3>\${escapeHtml(s.title)}</h3>
+          <p>\${escapeHtml(s.bullets?.[0] || "")}</p>
+          <div class="meta">\${toolsHTML}</div>
+          <div class="io">
+            <div><b>Input:</b> \${escapeHtml(s.io?.input || "-")}</div>
+            <div><b>Output:</b> \${escapeHtml(s.io?.output || "-")}</div>
+          </div>
+        \`;
+
+        el.addEventListener("click", () => setActive(i, true));
+        el.addEventListener("keydown", (e) => {
+          if(e.key === "Enter" || e.key === " "){ e.preventDefault(); setActive(i, true); }
+        });
+
+        timelineEl.appendChild(el);
+      });
+    }
+
+    function renderDetails(){
+      const s = steps[active];
+
+      // Title + focus for screen readers (move focus when changed by keyboard/buttons)
+      detailTitle.textContent = \`\${active+1}. \${s.title}\`;
+
+      // IO line
+      ioInput.textContent = s.io?.input || "-";
+      ioActions.textContent = s.io?.actions || "-";
+      ioOutput.textContent = s.io?.output || "-";
+
+      // Bullets
+      detailList.innerHTML = (s.bullets || []).map(b => \`<li>\${escapeHtml(b)}</li>\`).join("");
+
+      // Callouts
+      fixText.textContent = s.fix || "-";
+      tipText.textContent = s.tip || "-";
+
+      // KPIs
+      const prog = Math.round(((active+1)/steps.length)*100);
+      kpiProgress.textContent = \`\${prog}%\`;
+      kpiFocus.textContent = s.focus;
+      kpiOutputRight.textContent = s.output;
+
+      stepPill.textContent = \`Žingsnis: \${active+1} / \${steps.length}\`;
+      moodPill.textContent = \`Nuotaika: \${s.mood}\`;
+
+      // Prev/Next disabled
+      btnPrev.disabled = active === 0;
+      btnNext.disabled = active === steps.length - 1;
+
+      // Avatar state per step
+      applyAvatar(s.avatar, s.mouth);
+
+      // Gallery
+      renderGallery();
+
+      // Compare (only if exists)
+      renderCompare();
+    }
+
+    function setActive(i, scrollToSection=false){
+      active = clamp(i, 0, steps.length-1);
+
+      // Deep link hash: #step-3
+      history.replaceState(null, "", \`#step-\${active+1}\`);
+
+      renderTimeline();
+      renderDetails();
+
+      if(scrollToSection){
+        $("#process").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      // a11y: focus detail title after change via keyboard/buttons
+      detailTitle.focus({ preventScroll: true });
+
+      showToast(\`Aktyvu: \${active+1}. \${steps[active].title}\`);
+    }
+
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"']/g, s => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[s]));
+    }
+
+    // ============================================================
+    // 4) GALLERY + LIGHTBOX
+    // ============================================================
+    function renderGallery(){
+      const s = steps[active];
+      const imgs = s.gallery || [];
+      galleryEl.innerHTML = "";
+
+      imgs.forEach((img, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "thumb";
+        btn.type = "button";
+        btn.setAttribute("aria-label", \`Atidaryti peržiūrą: \${img.caption || "paveikslėlis"}\`);
+        btn.innerHTML = \`
+          <span class="zoom">⤢</span>
+          <img loading="lazy" src="\${img.src}" alt="\${escapeHtml(img.caption || "Screenshot")}" />
+          <div class="cap">\${escapeHtml(img.caption || "")}</div>
+        \`;
+        btn.addEventListener("click", () => openLightbox(active, idx));
+        galleryEl.appendChild(btn);
+      });
+
+      if(imgs.length === 0){
+        // If no gallery images, show friendly hint
+        const hint = document.createElement("div");
+        hint.className = "callout";
+        hint.innerHTML = `<b>Galerija:</b> Šiam žingsniui nepriskirta paveikslėlių. Įdėk į <span class="pill">steps[\${active}].gallery</span>.`;
+        galleryEl.appendChild(hint);
+      }
+    }
+
+    function openLightbox(stepIndex, imgIndex){
+      lbStepIndex = stepIndex;
+      lbImgIndex = imgIndex;
+
+      const imgs = steps[lbStepIndex].gallery || [];
+      if(!imgs.length) return;
+
+      lastFocusedEl = document.activeElement;
+
+      const current = imgs[lbImgIndex];
+      lbTitle.textContent = \`\${lbStepIndex+1}. \${steps[lbStepIndex].title} — \${lbImgIndex+1}/\${imgs.length}\`;
+      lbImg.src = current.src;
+      lbImg.alt = current.caption || "Peržiūra";
+      lbCap.textContent = current.caption || "";
+
+      lbPrev.disabled = lbImgIndex === 0;
+      lbNext.disabled = lbImgIndex === imgs.length - 1;
+
+      lightbox.classList.add("open");
+      lbClose.focus({ preventScroll:true });
+    }
+
+    function closeLightbox(){
+      lightbox.classList.remove("open");
+      // restore focus
+      if(lastFocusedEl && typeof lastFocusedEl.focus === "function"){
+        lastFocusedEl.focus({ preventScroll:true });
+      }
+    }
+
+    function lightboxNav(dir){
+      const imgs = steps[lbStepIndex].gallery || [];
+      const next = clamp(lbImgIndex + dir, 0, imgs.length - 1);
+      if(next === lbImgIndex) return;
+      openLightbox(lbStepIndex, next);
+    }
+
+    lightbox.addEventListener("click", (e)=>{
+      if(e.target === lightbox) closeLightbox();
+    });
+    lbClose.addEventListener("click", closeLightbox);
+    lbPrev.addEventListener("click", ()=>lightboxNav(-1));
+    lbNext.addEventListener("click", ()=>lightboxNav(1));
+
+    // ============================================================
+    // 5) BEFORE/AFTER COMPARE
+    // ============================================================
+    function renderCompare(){
+      const s = steps[active];
+      const c = s.compare;
+
+      if(!c){
+        compareWrap.style.display = "none";
+        compareWrap.innerHTML = "";
+        return;
+      }
+
+      compareWrap.style.display = "block";
+      compareWrap.innerHTML = \`
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+          <div style="font-weight:700; font-size:13px;">Before/After</div>
+          <span class="pill">\${escapeHtml(c.labelBefore || "Prieš")} → \${escapeHtml(c.labelAfter || "Po")}</span>
+        </div>
+
+        <div class="compare" id="compareBox" aria-label="Before/After palyginimas">
+          <img src="\${c.beforeSrc}" alt="\${escapeHtml(c.labelBefore || "Prieš")}" />
+          <img class="after" id="afterImg" src="\${c.afterSrc}" alt="\${escapeHtml(c.labelAfter || "Po")}" />
+          <div class="handle" id="handle"></div>
+          <div class="knob" id="knob">↔</div>
+        </div>
+
+        <div class="compare-controls">
+          <span>\${escapeHtml(c.labelBefore || "Prieš")}</span>
+          <input id="compareRange" type="range" min="0" max="100" value="50" aria-label="Palyginimo slankiklis" />
+          <span>\${escapeHtml(c.labelAfter || "Po")}</span>
+        </div>
+
+        <div class="lb-cap" style="margin-top:10px;">\${escapeHtml(c.caption || "")}</div>
+      \`;
+
+      const range = $("#compareRange", compareWrap);
+      const afterImg = $("#afterImg", compareWrap);
+      const handle = $("#handle", compareWrap);
+      const knob = $("#knob", compareWrap);
+
+      const apply = (v)=>{
+        const pct = clamp(v,0,100);
+        afterImg.style.clipPath = \`inset(0 0 0 \${pct}%)\`;
+        handle.style.left = \`\${pct}%\`;
+        knob.style.left = \`calc(\${pct}% - 18px)\`;
+      };
+
+      range.addEventListener("input", ()=>apply(+range.value));
+      apply(+range.value);
+
+      // Optional: drag knob
+      const box = $("#compareBox", compareWrap);
+      let dragging = false;
+      const pointerToPct = (clientX)=>{
+        const r = box.getBoundingClientRect();
+        const x = clamp(clientX - r.left, 0, r.width);
+        return (x / r.width) * 100;
+      };
+
+      const startDrag = (e)=>{
+        dragging = true;
+        box.setPointerCapture?.(e.pointerId);
+        const pct = pointerToPct(e.clientX);
+        range.value = String(Math.round(pct));
+        apply(pct);
+      };
+      const moveDrag = (e)=>{
+        if(!dragging) return;
+        const pct = pointerToPct(e.clientX);
+        range.value = String(Math.round(pct));
+        apply(pct);
+      };
+      const endDrag = ()=>{
+        dragging = false;
+      };
+
+      knob.addEventListener("pointerdown", startDrag);
+      box.addEventListener("pointermove", moveDrag);
+      box.addEventListener("pointerup", endDrag);
+      box.addEventListener("pointercancel", endDrag);
+      // allow click anywhere on compare
+      box.addEventListener("pointerdown", (e)=>{
+        if(e.target === knob) return;
+        const pct = pointerToPct(e.clientX);
+        range.value = String(Math.round(pct));
+        apply(pct);
+      });
+    }
+
+    // ============================================================
+    // 6) SCROLL PROGRESS + REVEAL
+    // ============================================================
+    function updateScrollProgress(){
+      const h = document.documentElement;
+      const max = (h.scrollHeight - h.clientHeight) || 1;
+      const p = (h.scrollTop / max) * 100;
+      progressFill.style.width = \`\${p}%\`;
+    }
+    window.addEventListener("scroll", updateScrollProgress, { passive:true });
+
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting) e.target.classList.add("visible");
+      });
+    }, { threshold: 0.12 });
+    $$(".reveal").forEach(el => io.observe(el));
+
+    // ============================================================
+    // 7) NAVIGACIJA / KLAVIATŪRA / DEMO / COPY
+    // ============================================================
+    $("#btnScrollTop").addEventListener("click", () => window.scrollTo({top:0, behavior:"smooth"}));
+
+    btnPrev.addEventListener("click", () => setActive(active-1));
+    btnNext.addEventListener("click", () => setActive(active+1));
+
+    function setDemo(on){
+      demoOn = on;
+      btnDemo.textContent = on ? "■ Stop" : "▶ Demo";
+      btnDemo.classList.toggle("primary", on);
+
+      if(on){
+        showToast("Demo: automatinis perėjimas");
+        demoTimer = setInterval(()=>{
+          const next = (active + 1) % steps.length;
+          setActive(next);
+        }, 2400);
+      }else{
+        clearInterval(demoTimer);
+        demoTimer = null;
+        showToast("Demo sustabdytas");
+      }
+    }
+    btnDemo.addEventListener("click", ()=>setDemo(!demoOn));
+
+    // Sliders: live avatar update (nekeičia step'o, tik preview)
+    function syncFromSliders(){
+      const hair = +sliders.hair.value;
+      const skin = +sliders.skin.value;
+      const shirt = +sliders.shirt.value;
+
+      sliders.hairOut.value = hair;
+      sliders.skinOut.value = skin;
+      sliders.shirtOut.value = shirt;
+
+      applyAvatar({hair, skin, shirt}, steps[active].mouth);
+    }
+    ["hair","skin","shirt"].forEach(k => sliders[k].addEventListener("input", syncFromSliders));
+
+    // Copy outline
+    $("#btnCopyOutline").addEventListener("click", async ()=>{
+      const text =
+        "Avataro kūrimo procesas:\n" +
+        steps.map((s, i)=> \`\${i+1}. \${s.title} — Input: \${s.io?.input || "-"} | Output: \${s.io?.output || "-"} | Tools: \${(s.tools||[]).join(", ")}\`).join("\n");
+      await copyToClipboard(text);
+      showToast("Santrauka nukopijuota");
+    });
+
+    // Copy current step link
+    $("#btnCopyLink").addEventListener("click", async ()=>{
+      const url = location.href.replace(/#.*$/, "") + \`#step-\${active+1}\`;
+      await copyToClipboard(url);
+      showToast("Nuoroda nukopijuota");
+    });
+
+    async function copyToClipboard(text){
+      try{
+        await navigator.clipboard.writeText(text);
+      }catch{
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+    }
+
+    // Keyboard
+    document.addEventListener("keydown", (e)=>{
+      // Lightbox handling first
+      if(lightbox.classList.contains("open")){
+        if(e.key === "Escape"){ e.preventDefault(); closeLightbox(); return; }
+        if(e.key === "ArrowLeft"){ e.preventDefault(); lightboxNav(-1); return; }
+        if(e.key === "ArrowRight"){ e.preventDefault(); lightboxNav(1); return; }
+        return;
+      }
+
+      if(e.key === "ArrowUp"){ e.preventDefault(); setActive(active-1); }
+      if(e.key === "ArrowDown"){ e.preventDefault(); setActive(active+1); }
+    });
+
+    // Hash routing: open correct step on load / hash change
+    function stepFromHash(){
+      const m = (location.hash || "").match(/^#step-(\d+)$/);
+      if(!m) return null;
+      const n = parseInt(m[1], 10);
+      if(Number.isNaN(n)) return null;
+      return clamp(n-1, 0, steps.length-1);
+    }
+    window.addEventListener("hashchange", ()=>{
+      const idx = stepFromHash();
+      if(idx !== null) setActive(idx, false);
+    });
+
+    // ============================================================
+    // 8) INIT
+    // ============================================================
+    function init(){
+      renderTimeline();
+      const idx = stepFromHash();
+      if(idx !== null) active = idx;
+      renderTimeline();
+      renderDetails();
+      updateScrollProgress();
+      blinkLoop();
+    }
+    init();
+  </script>
+</body>
+</html>
